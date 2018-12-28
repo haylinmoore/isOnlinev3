@@ -47,16 +47,20 @@ app.get('/v1/status/get/:users', function(req, res) {
     command = command.slice(0, -4);
     command += ")";
 
-    console.log(command);
-
     connection.query(command, names, function(err, rows, fields) {
         if (err) throw err
         
         let timestamp = Math.floor(new Date() / 1000);
-        let users = [];
+        let users = {};
         
-        for (var i in rows){
-            let time = timestamp - rows[i].date;
+		for (var i in rows){
+			if (users[rows[i].username] == undefined || users[rows[i].username] < rows[i].date){
+				users[rows[i].username] = rows[i].date;
+			}
+		}
+		
+        for (var i in users){
+            let time = timestamp - users[i];
             
             if (time < 180){ // 3 minutes
                 time = "online";
@@ -66,9 +70,9 @@ app.get('/v1/status/get/:users', function(req, res) {
                 time = "unknown";
             }
             
-            names = names.filter(e => e !== rows[i].username);
+            names = names.filter(e => e !== i);
             
-            users.push({name:rows[i].username, status:time});
+            users[i] = time;
         }
         
         for (var i in names){
@@ -89,10 +93,34 @@ app.get('/v1/status/get/:users', function(req, res) {
 
 })
 
-app.get('/v1/status/set/:user/:userkey', function(req, res) {
-    let command = "UPDATE users SET date = ? WHERE BINARY username = ? AND BINARY token = ? AND activated = 1;";
+app.get('/v1/totalusers', function(req, res) {
+    let command = "SELECT COUNT(username) FROM users"
+    connection.query(command, function(err, rows, fields) {
+        if (err) {
+            res.json(err);
+            console.log(err);
+        } else {
+            res.json({count:rows[0]["COUNT(username)"]});
+        }
+    })
 
-    console.log(command);
+})
+
+app.get('/v1/status/onlineusers', function(req, res) {
+    let command = "SELECT COUNT(username) FROM users WHERE date>=" + (Math.floor(new Date() / 1000)-180);
+    connection.query(command, function(err, rows, fields) {
+        if (err) {
+            res.json(err);
+            console.log(err);
+        } else {
+            res.json({count:rows[0]["COUNT(username)"]});
+        }
+    })
+
+})
+
+app.get('/v1/status/set/:user/:userkey', function(req, res) {
+    let command = "UPDATE users SET date = ? WHERE BINARY username = ? AND BINARY token = ?";
 
     connection.query(command, [Math.floor(new Date() / 1000), req.params.user, req.params.userkey], function(err, result) {
         if (result.changedRows != 1 || err) {
@@ -112,7 +140,7 @@ app.get('/v1/status/set/:user/:userkey', function(req, res) {
 // VERIFY PATH
 
 app.get('/v1/verify/gettoken/:username/:passphrase', function(req, res) {
-    let command = "INSERT INTO users (username, activated, date, token) VALUES (?, 1, ?, ?) ON DUPLICATE KEY UPDATE token = ?, activated = 1";
+    let command = "INSERT INTO users (username, date, token, comment) VALUES (?, ?, ?, ?)";
 
     requestify.get('https://api.scratch.mit.edu/projects/274388698/comments?' + Math.random()).then(function(response) {
         // Get the response body
@@ -123,7 +151,6 @@ app.get('/v1/verify/gettoken/:username/:passphrase', function(req, res) {
         for (var i in messages){
             if (messages[i].author.username === req.params.username && messages[i].content === hash){
                 verified = 1;
-                console.log("Verified")
                 break;
             }
         }
@@ -136,12 +163,9 @@ app.get('/v1/verify/gettoken/:username/:passphrase', function(req, res) {
         }
         let token = makeid(64);
 
-        connection.query(command, [req.params.username, Math.floor(new Date() / 1000), token, token], function(err, result) {
-
-            //console.log(err, result)
-
+        connection.query(command, [req.params.username, Math.floor(new Date() / 1000), token, hash], function(err, result) {
             if (err) {
-                res.JSON({
+                res.json({
                     token: false
                 });
                 //console.log(err);
@@ -156,4 +180,4 @@ app.get('/v1/verify/gettoken/:username/:passphrase', function(req, res) {
 
 })
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+app.listen(port, () => console.log(`isOnlineV3 listening on port ${port}!`))
