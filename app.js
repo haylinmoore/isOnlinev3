@@ -76,16 +76,7 @@ app.get('/v1/status/get/:users', function(req, res) {
         }
         
         for (var i in names){
-
-            if (names[i] === "alwaysonline"){
-                users.push({name:names[i], status:"online"});
-            } else if (names[i] === "alwaysoffline"){
-                users.push({name:names[i], status:"offline"});
-            } else if (names[i] === "alwaysunknown"){
-                users.push({name:names[i], status:"unknown"});
-            } else{
-                users.push({name:names[i], status:"notiouser"});
-            }
+            users.push({name:names[i], status:"notiouser"});
         }
         
         res.json(users);
