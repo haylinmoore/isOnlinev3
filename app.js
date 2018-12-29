@@ -85,26 +85,26 @@ app.get('/v1/status/get/:users', function(req, res) {
 })
 
 app.get('/v1/totalusers', function(req, res) {
-    let command = "SELECT COUNT(username) FROM users"
+    let command = "SELECT COUNT(DISTINCT(username)) FROM users"
     connection.query(command, function(err, rows, fields) {
         if (err) {
             res.json(err);
             console.log(err);
         } else {
-            res.json({count:rows[0]["COUNT(username)"]});
+            res.json({count:rows[0]["COUNT(DISTINCT(username))"]});
         }
     })
 
 })
 
 app.get('/v1/status/onlineusers', function(req, res) {
-    let command = "SELECT COUNT(username) FROM users WHERE date>=" + (Math.floor(new Date() / 1000)-180);
+    let command = "SELECT COUNT(DISTINCT(username)) FROM users WHERE date>=" + (Math.floor(new Date() / 1000)-180);
     connection.query(command, function(err, rows, fields) {
         if (err) {
             res.json(err);
             console.log(err);
         } else {
-            res.json({count:rows[0]["COUNT(username)"]});
+            res.json({count:rows[0]["COUNT(DISTINCT(username))"]});
         }
     })
 
